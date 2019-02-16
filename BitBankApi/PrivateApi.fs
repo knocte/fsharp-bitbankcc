@@ -262,13 +262,17 @@ type PrivateApi(apiKey: string, apiSecret: string, [<Optional; DefaultParameterV
   member this.CancelOrders(orderIds: array<int>, pair: PathPair) =
     this.CancelOrdersAsync(orderIds, pair).GetAwaiter().GetResult()
 
-  member this.GetOrdersInfoAsync(orderIds: array<int>, pair: PathPair) =
+  member this.AsyncGetOrdersInfo(orderIds: array<int>) (pair: PathPair) =
     let arg = Some [("order_ids", orderIds :> obj); ("pair", pair :> obj)]
-    (async {
+    async {
       let! resp = get "/user/spot/orders_info" arg
       failIfError resp |> ignore
       return JsonSerializer.Deserialize<Response<OrdersRecord>>(resp, StandardResolver.CamelCase)
-    } |> Async.StartAsTask).ConfigureAwait(false)
+    }
+
+  member this.GetOrdersInfoAsync(orderIds: array<int>, pair: PathPair) =
+    let asyncJob = this.AsyncGetOrdersInfo orderIds pair
+    (asyncJob |> Async.StartAsTask).ConfigureAwait false
 
   member this.GetOrdersInfo(orderIds: array<int>, pair: PathPair) =
     this.GetOrdersInfoAsync(orderIds, pair).GetAwaiter().GetResult()
